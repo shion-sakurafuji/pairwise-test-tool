@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Pairwise Test Tool</title>
+
+    <style>
+        .factorRow{
+            margin-bottom: 12px;
+        }
+        .factorRow{
+            margin-bottom: 12px;
+        }
+        .factorRow{
+            margin-bottom: 8px;
+        }
+        .factorRow input[name="factorName"]{
+            width: 160px;
+        }
+        .factorRow input[name="levels"]{
+            width: 320px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>ペア構成テストツール</h1>
+
+    <form action="/generate" method="post">
+        <p th:if="${error}" th:text="${error}"></p>
+        <div id="factorList">
+            <div class="factorRow">
+                <label for="factorName1">要素名</label>
+                <input 
+                    type="text"
+                    id="factorName1"
+                    name="factorName"
+                    placeholder="例：OS">
+                
+                <label for="levels1">水準</label>
+                <input 
+                    type="text"
+                    id="levels1"
+                    name="levels"
+                    placeholder="例：Windows,macOS,Linux">
+            </div>
+        </div>
+
+        <button type="button" id="addFactor">要素を追加</button>
+        <button type="submit">作成</button>
+
+    </form>
+    <script>
+    let factorCount = 1;
+    document.getElementById("addFactor").addEventListener("click", function() {
+            factorCount++;
+
+            document.getElementById("factorList").insertAdjacentHTML("beforeend", 
+                `<div class="factorRow">
+                    <label for="factorName${factorCount}">要素名</label>
+                    <input
+                        type="text"
+                        id="factorName${factorCount}"
+                        name="factorName">
+                    <label for="levels${factorCount}">水準</label>
+                    <input
+                        type="text"
+                        id="levels${factorCount}"
+                        name="levels">
+                    <button type="button" class="removeFactor">削除</button> 
+                
+                </div>`
+            );
+
+    document.getElementById("factorList").addEventListener("click", function(event) {
+            if (event.target.classList.contains("removeFactor")) {
+                event.target.parentElement.remove();
+                }
+    });
+    });
+    </script>
+</body>
+</html>
