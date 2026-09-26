@@ -1,56 +1,107 @@
+# Workflowの名前
 name: CI
 
+# Workflowを開始する条件
 on:
+  # mainブランチにpushされたとき
   push:
     branches: [ main ]
+
+  # mainブランチ宛てのPull Requestが作成・更新されたとき
   pull_request:
     branches: [ main ]
 
+# 実行するJob
 jobs:
+  # testという名前のJob
   test:
+
+    # GitHubが用意するUbuntu環境で実行する
     runs-on: ubuntu-latest
 
+    # Jobの中で順番に実行する処理
     steps:
+
+      # GitHubリポジトリのコードをRunnerに取得する
       - name: Checkout
         uses: actions/checkout@v6
 
+      # Java 26をRunnerにセットアップする
       - name: Set up Java
         uses: actions/setup-java@v6
         with:
+          # Eclipse Temurin版のJavaを使用
           distribution: temurin
+
+          # 使用するJavaのバージョン
           java-version: '26'
+
+          # Mavenの依存関係をキャッシュして次回以降を高速化する
           cache: maven
 
+      # Node.jsをRunnerにセットアップする
+      # Playwrightを実行するために必要
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
+          # 最新のLTS版Node.jsを使用
           node-version: 'lts/*'
+
+          # npmの依存関係をキャッシュする
           cache: npm
 
+      # package-lock.jsonをもとにNode.jsの依存関係をインストールする
+      # Playwrightなどがここでインストールされる
       - name: Install Node dependencies
         run: npm ci
 
+      # Playwrightで使用するChromiumブラウザをインストールする
+      # --with-depsでブラウザ実行に必要なOS側の依存関係も入れる
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
+      # Spring Bootアプリケーションをビルドする
       - name: Build Java application
+
+        # Maven Wrapperを使用してpackageを実行
+        # -DskipTestsでJava側のテストはここでは実行しない
         run: ./mvnw package -DskipTests
 
+      # Spring Bootアプリケーションを起動する
       - name: Start Spring Boot
         run: |
+          # Spring Bootをバックグラウンドで起動
+          # 標準出力・エラー出力をspring.logに保存
           ./mvnw spring-boot:run > spring.log 2>&1 &
+
+          # 起動したSpring BootプロセスのIDを保存
           echo $! > spring.pid
 
+      # Spring Bootが起動するまで待つ
       - name: Wait for application
         run: |
+          # 最大30回確認する
           for i in {1..30}; do
+
+            # localhost:8080にアクセスできれば起動完了
             if curl --fail http://localhost:8080/; then
               exit 0
             fi
+
+            # まだ起動していなければ2秒待つ
             sleep 2
           done
+
+          # 30回待っても起動しなかった場合、
+          # Spring Bootのログを表示する
           cat spring.log
+
+          # Stepを失敗として終了する
           exit 1
 
+      # 起動したSpring Bootアプリに対して
+      # PlaywrightのE2Eテストを実行する
       - name: Run Playwright tests
+
+        # Chromiumを使用してPlaywrightテストを実行
         run: npx playwright test --project=chromium
