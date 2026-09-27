@@ -105,3 +105,41 @@ jobs:
 
         # Chromiumを使用してPlaywrightテストを実行
         run: npx playwright test --project=chromium
+
+  # CI成功後、VPSへ自動デプロイするJob
+  deploy:
+
+    # test Jobが成功した場合だけ実行
+    needs: test
+
+    # mainへのpushだけを対象とする
+    # Pull Requestではデプロイしない
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # VPSへのSSH接続を準備
+      - name: Configure SSH
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/pairwise_deploy_ed25519
+          chmod 600 ~/.ssh/pairwise_deploy_ed25519
+
+          printf '%s\n' "$VPS_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      # テスト済みのコミットをVPSに反映
+      - name: Deploy to VPS
+        run: |
+          ssh -i ~/.ssh/pairwise_deploy_ed25519 \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o BatchMode=yes \
+            deploy@153.121.44.95 \
+            "sudo -n /usr/local/sbin/pairwise-deploy $GITHUB_SHA"
